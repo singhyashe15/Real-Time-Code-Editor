@@ -58,31 +58,34 @@ export default function Home() {
   // border="2px solid" borderColor="blue.400" borderRadius="lg" boxShadow="md"
   return (
     <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" height="100vh" width="100vw" px="4"  >
-        <Card width={['90%', '70%', '30%']}  p="8">
+      <Card width={['90%', '70%', '30%']} p="8">
         <Flex justify="center">
           <Icon as={FaCode} color="green.500" boxSize={8} align="center" />
         </Flex>
-          <Text fontWeight="semibold" fontSize="xl" color="green.500" textAlign="center" my="4" >
-            Real Time Code Editor
-          </Text>
-          <Text fontWeight="semibold" fontSize="lg" textAlign="left" my="4">
-            Paste invitation Room Id
-          </Text>
-          <Box w="100%" display="flex" flexDirection="column" gap="3">
-            <Input placeholder="ROOM ID" fontWeight="semibold" color="black" name="roomId" value={roomId} onChange={handleChange} />
-            <Input placeholder="USERNAME" fontWeight="semibold" color="black" name="userName" value={userName} onChange={handleChange} />
-          </Box>
+        <Text fontWeight="semibold" fontSize="xl" color="green.500" textAlign="center" my="4" >
+          Real Time Code Editor
+        </Text>
+        <Text fontWeight="semibold" fontSize="lg" textAlign="left" my="4">
+          Paste invitation Room Id
+        </Text>
+        <Box w="100%" display="flex" flexDirection="column" gap="3">
+          <Input placeholder="ROOM ID" fontWeight="semibold" color="black" name="roomId" value={roomId} onChange={handleChange} />
+          <Input placeholder="USERNAME" fontWeight="semibold" color="black" name="userName" value={userName} onChange={handleChange} />
+        </Box>
 
-          <Button px="8" py="4" left="0" my="2" bg="green.400" fontSize="lg" rounded="full" _hover={{ bg: "green.200" }}
-            onClick={enterRoom}
-            leftIcon={loading && <Spinner size="md" />}>
-            {loading ? "Wait..." : "Join"}
-          </Button>
+        <Button px="8" py="4" left="0" my="2" bg="green.400" fontSize="lg" rounded="full" _hover={{ bg: "green.200" }}
+          onClick={enterRoom}
+          leftIcon={loading && <Spinner size="md" />}>
+          {loading ? "Wait..." : "Join"}
+        </Button>
 
-          <Text fontWeight="thin" textAlign="right">
-            Create a new Room Id <Text fontWeight="semibold" color="teal.500" onClick={createRoom} cursor="pointer" >Here</Text>
-          </Text>
-        </Card>
+        <Text fontWeight="thin" textAlign="right">
+          Create a new Room Id
+        </Text>
+        <Text fontWeight="semibold" color="teal.500" onClick={createRoom} cursor="pointer" textAlign="right" >Here</Text>
+      </Card>
+
+      {/* ["Javascript","Cpp"].map()</Card> */}
     </Box>
   )
 }

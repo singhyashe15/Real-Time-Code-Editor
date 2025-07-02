@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Flex, Box, Text, Button, HStack, IconButton, Tooltip, Select, useColorMode, useColorModeValue, Drawer, DrawerBody, DrawerCloseButton, DrawerContent, DrawerFooter, DrawerHeader, DrawerOverlay, useDisclosure, MenuList, MenuItem, Menu, MenuButton, Input, Avatar, InputGroup, InputRightElement, Center, useEditable, Card } from "@chakra-ui/react";
 import { useNavigate, useParams } from "react-router-dom";
 import { MoonIcon, SunIcon } from "@chakra-ui/icons";
-import { FiSave, FiMoreVertical } from "react-icons/fi";
+import { FiMoreVertical } from "react-icons/fi";
 import { MdCallEnd, MdChat, MdPeople } from "react-icons/md";
 import { FaPaperPlane, FaExclamationCircle } from "react-icons/fa"
 import { Download } from 'lucide-react';
