@@ -57,28 +57,28 @@ export default function Login() {
   }
 
   return (
-    <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" height="100vh" width="100vw" px="4">
-      <Text fontStyle="italic" fontSize="2xl" fontFamily="cursive" >Welcome to Code Editor</Text>
-      <Box width={['90%', '70%', '30%']} bg="slate.500" color="black" border="2px solid" borderColor="blue.400" borderRadius="lg" boxShadow="xl" textAlign="center" mt="8">
-        <Card>
+    <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" height="100vh" width="100vw" px="4" >
+      <Text fontStyle="italic" fontSize="2xl" fontFamily="cursive" color="white" >Welcome to Code Editor</Text>
+      <Box width={['90%', '70%', '30%']}  color="black" border="2px solid" borderColor="blue.400" borderRadius="lg" boxShadow="xl" textAlign="center" mt="8">
+        <Card background="transparent">
           <form onSubmit={handleSubmit}>
             <FormControl p="8">
               <InputGroup>
                 <InputLeftElement>
-                  <FaEnvelope />
+                  <FaEnvelope color='white' />
                 </InputLeftElement>
-                <Input placeholder="Enter registered Email" name="email" onChange={handleChange} />
+                <Input placeholder="Enter registered Email" name="email" color="white" onChange={handleChange} />
               </InputGroup>
               <InputGroup my="4">
                 <InputLeftElement>
-                  <FaKey />
+                  <FaKey color="white" />
                 </InputLeftElement>
                 <InputRightElement cursor="pointer" onClick={() => toggle('pass')}>
                   {
-                    hide?.pass ? <FaEye /> : <FaEyeSlash />
+                    hide?.pass ? <FaEye color="white" /> : <FaEyeSlash color="white" />
                   }
                 </InputRightElement>
-                <Input type={hide.pass ? 'text' : 'password'} name='password' id="password" placeholder='Password' onChange={handleChange} />
+                <Input type={hide.pass ? 'text' : 'password'} color="white" name='password' id="password" placeholder='Password' onChange={handleChange} />
               </InputGroup>
 
             </FormControl>
@@ -94,7 +94,7 @@ export default function Login() {
           </form>
         </Card>
       </Box>
-      <Text mt="8">Don't have an account ? <Link href='/register' >Join us today</Link></Text>
+      <Text color="white" mt="8">Don't have an account ? <Link href='/register' >Join us today</Link></Text>
     </Box>
 
   )

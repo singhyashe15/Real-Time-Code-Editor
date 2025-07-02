@@ -58,8 +58,8 @@ export default function Home() {
   // border="2px solid" borderColor="blue.400" borderRadius="lg" boxShadow="md"
   return (
     <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" height="100vh" width="100vw" px="4"  >
-      <Card width={['90%', '70%', '30%']} p="8">
-        <Flex justify="center">
+      <Card width={['90%', '70%', '30%']} p="8" background="transparent" border="2px solid" borderColor="blue.400" borderRadius="lg" boxShadow="xl">
+        <Flex justify="center" >
           <Icon as={FaCode} color="green.500" boxSize={8} align="center" />
         </Flex>
         <Text fontWeight="semibold" fontSize="xl" color="green.500" textAlign="center" my="4" >
@@ -79,7 +79,7 @@ export default function Home() {
           {loading ? "Wait..." : "Join"}
         </Button>
 
-        <Text fontWeight="thin" textAlign="right">
+        <Text fontWeight="thin" textAlign="right" color="white">
           Create a new Room Id
         </Text>
         <Text fontWeight="semibold" color="teal.500" onClick={createRoom} cursor="pointer" textAlign="right" >Here</Text>

@@ -50,16 +50,16 @@ export default function Register() {
   }
   return (
     <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" height="100vh" width="100vw" px="4">
-      <Text fontStyle="italic" fontSize="2xl" fontFamily="cursive" >Create an Account </Text>
+      <Text fontStyle="italic" fontSize="2xl" fontFamily="cursive" color="white" >Create an Account </Text>
       <Box width={['90%', '70%', '30%']} bg="slate.500" color="black" border="2px solid" borderColor="blue.400" borderRadius="lg" boxShadow="md" textAlign="center">
         <form onSubmit={handleSubmit}>
           <FormControl p="8">
-            <Input name='name' placeholder='Name' my="4" onChange={handlechange} />
+            <Input name='name' placeholder='Name' my="4" color="white" onChange={handlechange} />
             <InputGroup my="4" >
               <InputLeftElement cursor="pointer">
                 <FaEnvelope />
               </InputLeftElement>
-              <Input type='email' name='email' id="email" placeholder='Email' onChange={handlechange} autoComplete="off" />
+              <Input type='email' name='email' id="email" placeholder='Email' color="white" onChange={handlechange} autoComplete="off" />
             </InputGroup>
             <InputGroup my="4">
               <InputLeftElement>
@@ -70,7 +70,7 @@ export default function Register() {
                   hide?.pass ? <FaEye /> : <FaEyeSlash />
                 }
               </InputRightElement>
-              <Input type={hide.pass ? 'text' : 'password'} name='password' id="password" placeholder='Password' onChange={handlechange} autoComplete="off"/>
+              <Input type={hide.pass ? 'text' : 'password'} name='password' id="password" placeholder='Password' color="white" onChange={handlechange} autoComplete="off"/>
             </InputGroup>
 
           </FormControl>
@@ -82,7 +82,7 @@ export default function Register() {
           </Button>
         </form>
       </Box>
-      <Text mt="8">Already have an account ? <Link href='/login'>Sign in here</Link></Text>
+      <Text mt="8" color="white">Already have an account ? <Link href='/login'>Sign in here</Link></Text>
     </Box>
   )
 };
