@@ -87,17 +87,11 @@ export default function Createroom() {
       });
 
       socket.on("join-request", ({ name, id, requestId }) => {
-        toast({
-          id: id,
-          title: `${name} wants to enter`,
-          status: "info",
-          duration: 5000,
-          isClosable: true,
-        });
+        toast.info("Someone wants to enter");
         setAllowUser((prev) => {
-          const alreadyExists = prev.some((u) => u.id === user.id);
+          const alreadyExists = prev.some((u) => u.id === id);
           if (alreadyExists) return prev;
-          return [...prev, {id,name,requestId}];
+          return [...prev, { id, name, requestId }];
         });
       })
 
