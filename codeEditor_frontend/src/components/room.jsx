@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Flex, Box, Text, Button, HStack, IconButton, Tooltip, Select, useColorMode, useColorModeValue, Drawer, DrawerBody, DrawerCloseButton, DrawerContent, DrawerFooter, DrawerHeader, DrawerOverlay, useDisclosure, MenuList, MenuItem, Menu, MenuButton, Input, Avatar, InputGroup, InputRightElement, Center, useEditable, Card } from "@chakra-ui/react";
+import { Flex, Box, Text, Button, HStack, IconButton, Tooltip, Select, useColorMode, useColorModeValue, Drawer, DrawerBody, DrawerCloseButton, DrawerContent, DrawerFooter, DrawerHeader, DrawerOverlay, useDisclosure, MenuList, MenuItem, Menu, MenuButton, Input, Avatar, InputGroup, InputRightElement, Center, useEditable, Card, VStack } from "@chakra-ui/react";
 import { useNavigate, useParams } from "react-router-dom";
 import { MoonIcon, SunIcon } from "@chakra-ui/icons";
 import { FiMoreVertical } from "react-icons/fi";
 import { MdCallEnd, MdChat, MdPeople } from "react-icons/md";
-import { FaPaperPlane, FaExclamationCircle } from "react-icons/fa"
-import { Download } from 'lucide-react';
+import { FaPaperPlane } from "react-icons/fa"
+import { Download, Info, SquareMenu } from 'lucide-react';
 import Editor from "@monaco-editor/react";
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
@@ -15,6 +15,7 @@ import { useSocket } from "../context/socket.jsx";
 
 export default function Createroom() {
   const [user, setUser] = useState({ name: "", id: "" });
+  const [allowUser, setAllowUser] = useState([]);
   const [text, setText] = useState("");
   const [msg, setMsg] = useState(null);
   const [language, setLanguage] = useState("");
@@ -35,6 +36,7 @@ export default function Createroom() {
     const storedUser = JSON.parse(localStorage.getItem("user"));
     if (storedUser) {
       setUser(storedUser);
+      console.log(user)
     }
   }, [])
 
@@ -73,16 +75,34 @@ export default function Createroom() {
   // real time code
   useEffect(() => {
     if (socket) {
-      socket.emit("code-room", roomId);
+      setTimeout(() => {
+        console.log(user)
+        const userId = user.id;
+        socket.emit("code-room", { roomId, userId });
+      }, 5000);
+
 
       socket.on("real-time-code-sync", (realTimeCode) => {
-        console.log("real " + realTimeCode)
         setCode(realTimeCode);
       });
 
+      socket.on("join-request", ({ name, id, requestId }) => {
+        toast({
+          id: id,
+          title: `${name} wants to enter`,
+          status: "info",
+          duration: 5000,
+          isClosable: true,
+        });
+        setAllowUser((prev) => {
+          const alreadyExists = prev.some((u) => u.id === user.id);
+          if (alreadyExists) return prev;
+          return [...prev, {id,name,requestId}];
+        });
+      })
+
       return () => {
         socket.off("real-time-code-sync", (realTimeCode) => {
-          console.log("real " + realTimeCode)
           setCode(realTimeCode);
         })
       }
@@ -141,16 +161,24 @@ export default function Createroom() {
   })
 
   // handle the participants
-  const handleRemove = async (id , name) =>{
+  const handleRemove = async (id, name) => {
     const server_url = import.meta.env.VITE_SERVER_URL;
     const res = await axios.put(`${server_url}/auth/deleteParticipant?roomId=${roomId}&id=${id}`);
-    if(res.data.success){
+    if (res.data.success) {
       toast(`Admin removed ${name}`);
     }
   }
   // close the meetings
   const handleClose = () => {
     navigate("/", { replace: true });
+  }
+
+  // handle waiting users
+  const handleUser = (id, requestId, isApproved) => {
+    console.log(requestId)
+    socket.emit("respond-join-request", { requestId, isApproved });
+    const updatedUser = allowUser.filter((user) => user.id !== id);
+    setAllowUser(updatedUser);
   }
 
   return (
@@ -165,12 +193,30 @@ export default function Createroom() {
           <DrawerCloseButton />
           <DrawerHeader>People</DrawerHeader>
           <DrawerBody>
+            {
+              allowUser.length > 0 &&
+              <Text fontWeight="semibold">Waiting to Join</Text>
+            }
+            {
+              allowUser?.map((user) => {
+                return (
+                  <VStack key={user?.id} p="4">
+                    <Text textAlign="left">{user?.name}</Text>
+                    <HStack>
+                      <Button onClick={() => handleUser(user?.id, user?.requestId, true)}>Allow</Button>
+                      <Button onClick={() => handleUser(user?.id, user?.requestId, false)}>Deny</Button>
+                    </HStack>
+                  </VStack>
+
+                )
+              })
+            }
             <Input placeholder="Search by the name" />
             <Flex direction="column" gap={2} w="auto" fontWeight="semibold" fontSize="lg" color="gray.400" >
               {totalMember?.member?.map((member) => {
                 return (
                   <Box key={member._id} p="3" shadow="md" borderWidth="1px" borderRadius="md" mt="3" display="flex" alignItems="center" justifyContent="space-between">
-                    <Text fontWeight="medium" color="gray.800">
+                    <Text fontWeight="medium" color="white">
                       @{member.name} {totalMember.adminId === member?._id && '(Host)'}
                     </Text>
                     {totalMember.adminId !== member?._id &&
@@ -182,7 +228,7 @@ export default function Createroom() {
                           rightIcon={<FiMoreVertical />}
                         />
                         <MenuList>
-                          <MenuItem onClick={() => handleRemove(member._id,member.name)}>
+                          <MenuItem onClick={() => handleRemove(member._id, member.name)}>
                             Remove
                           </MenuItem>
                         </MenuList>
@@ -255,16 +301,20 @@ export default function Createroom() {
           </Box>
           {
             show &&
-            <Card mt="-10" p="4" w="auto" h="24" rounded="lg" float="right" zIndex="banner" bgColor="yellow.900" >
+            <Card mt="-10" p="4" w="auto" h="24" rounded="lg" float="right" zIndex="999" bgColor="yellow.900" >
               <Text color={colorMode === "light" ? "black" : "white"} >
                 Meeting ID : {roomId}
               </Text>
             </Card>
           }
         </Box>
-        <Flex justify="space-between" m="4">
+        <Flex justify="space-between" m="8">
           <HStack>
-            <Text fontWeight="semibold">{date.getHours()} : {(date.getMinutes() % 10 === date.getMinutes()) ? `0${date.getMinutes()}` : date.getMinutes()} | {date.getFullYear()}</Text>
+            <IconButton
+              icon={<SquareMenu size="1.5rem" />}
+              variant="ghost"
+              aria-label="Menu"
+            />
           </HStack>
           <HStack spacing="8">
             <IconButton
@@ -307,7 +357,7 @@ export default function Createroom() {
           </HStack>
           <HStack>
             <IconButton
-              icon={<FaExclamationCircle size="1.5rem" />}
+              icon={<Info size="1.5rem" />}
               variant="ghost"
               aria-label="info"
               onClick={() => setShow(!show)}

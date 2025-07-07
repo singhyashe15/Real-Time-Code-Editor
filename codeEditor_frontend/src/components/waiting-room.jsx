@@ -1,8 +1,36 @@
 import { Flex, Heading, Text, Spinner, Card, Icon } from "@chakra-ui/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { FaCode } from "react-icons/fa";
+import { useEffect } from "react";
+import { useSocket } from "../context/socket.jsx";
 export default function WaitingRoom() {
   const navigate = useNavigate();
+  const socket = useSocket();
+  const { roomId } = useParams();
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (socket) {
+      const name = user.name;
+      const id = user.id;
+
+      socket.emit('request-join-room', { roomId, name, id });
+
+      socket.on("join-approved", () => {
+        navigate(`/r/${roomId}`, { replace: true });
+      });
+
+      socket.on("join-denied", ({ reason }) => {
+        alert(reason || "Access denied");
+        navigate('/login', { replace: true });
+      });
+
+      return () => {
+        socket.off("join-approved");
+        socket.off("join-denied");
+      };
+    }
+  }, [socket])
 
   return (
     <Flex direction="column" justify="center" align="center" textAlign="center" py={10} px={6} height="100vh" width="100vw">
