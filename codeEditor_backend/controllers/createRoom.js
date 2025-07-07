@@ -7,12 +7,15 @@ const createRoom = async (req, res) => {
     const roomFound = await roomModel.findById({ _id: roomId }); // check room Id present
     // find the user with their name
     const userFound = await userModel.findOne({ name: userName });
-    console.log(userFound)
+    
+    if(roomFound.usersId.includes(userFound._id)){
+      return res.status(201).json({msg:"entered successfully", admin : roomFound.adminId.equals(userFound._id), success:true})
+    }
     if (roomFound) { // if present
       const updated = await roomModel.updateOne({ _id: roomId }, { $inc: { noOfUser: 1 } , $push : {usersId : userFound._id} }); // increment the no of participants
-      console.log(updated)
+      
       if (updated) {
-        return res.status(201).json({ msg: "user added in the room", success: true });
+        return res.status(201).json({ msg: "user added in the room",admin: false, success: true });
       }
     }
 
