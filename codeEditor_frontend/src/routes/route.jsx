@@ -1,4 +1,3 @@
-import React from "react";
 import { createBrowserRouter } from 'react-router-dom';
 import Home from "../pages/home.jsx";
 import Login from "../pages/login.jsx";
@@ -38,8 +37,12 @@ const router = createBrowserRouter([
     errorElement: <Error />
   },
   {
-    path: '/waiting-room',
-    element: <WaitingRoom />,
+    path: 'waiting-room/r/:roomId',
+    element: (
+      <ProtectedRoute>
+        <WaitingRoom />
+      </ProtectedRoute>
+    ),
     errorElement: <Error />
   }
 ])

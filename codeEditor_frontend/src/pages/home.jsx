@@ -40,12 +40,12 @@ export default function Home() {
       })
 
       if (res.data.success) {
-        toast.success(res.data.msg);
-        // if (res.data.admin === true) {
-        navigate(`/r/${roomId}`, { replace: true });
-        // } else {
-        // navigate('/waiting-room', { replace: true })
-        // }
+        if (res.data.admin === true) {
+          toast.success(res.data.msg);
+          navigate(`/r/${roomId}`, { replace: true });
+        } else {
+          navigate(`/waiting-room/r/${roomId}`, { replace: true })
+        }
       }
 
     } catch (error) {
@@ -69,8 +69,8 @@ export default function Home() {
           Paste invitation Room Id
         </Text>
         <Box w="100%" display="flex" flexDirection="column" gap="3">
-          <Input placeholder="ROOM ID" fontWeight="semibold" color="black" name="roomId" value={roomId} onChange={handleChange} />
-          <Input placeholder="USERNAME" fontWeight="semibold" color="black" name="userName" value={userName} onChange={handleChange} />
+          <Input placeholder="ROOM ID" fontWeight="semibold" color="white" name="roomId" value={roomId} onChange={handleChange} />
+          <Input placeholder="USERNAME" fontWeight="semibold" color="white" name="userName" value={userName} onChange={handleChange} />
         </Box>
 
         <Button px="8" py="4" left="0" my="2" bg="green.400" fontSize="lg" rounded="full" _hover={{ bg: "green.200" }}
