@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Flex, Box, Text, Button, HStack, IconButton, Tooltip, Select, useColorMode, useColorModeValue, Drawer, DrawerBody, DrawerCloseButton, DrawerContent, DrawerFooter, DrawerHeader, DrawerOverlay, useDisclosure, MenuList, MenuItem, Menu, MenuButton, Input, Avatar, InputGroup, InputRightElement, Center, useEditable, Card, VStack } from "@chakra-ui/react";
+import { Flex, Box, Text, Button, HStack, IconButton, Tooltip, Select, useColorMode, useColorModeValue, Drawer, DrawerBody, DrawerCloseButton, DrawerContent, DrawerFooter, DrawerHeader, DrawerOverlay, useDisclosure, MenuList, MenuItem, Menu, MenuButton, Input, Avatar, InputGroup, InputRightElement, Center, useEditable, Card, VStack, filter } from "@chakra-ui/react";
 import { useNavigate, useParams } from "react-router-dom";
 import { MoonIcon, SunIcon } from "@chakra-ui/icons";
 import { FiMoreVertical } from "react-icons/fi";
@@ -7,14 +7,13 @@ import { MdCallEnd, MdChat, MdPeople } from "react-icons/md";
 import { FaPaperPlane } from "react-icons/fa"
 import { Download, Info, SquareMenu } from 'lucide-react';
 import Editor from "@monaco-editor/react";
-import axios from "axios";
-import { useQuery } from "@tanstack/react-query";
 import { Java, Cpp, C } from "../boilerplate/boiler.jsx";
 import toast from 'react-hot-toast';
 import { useSocket } from "../context/socket.jsx";
 
 export default function Createroom() {
-  const [user, setUser] = useState({ name: "", id: "" });
+  const [user, setUser] = useState();
+  const [fetchUser, setFetchUser] = useState([]);
   const [allowUser, setAllowUser] = useState([]);
   const [text, setText] = useState("");
   const [msg, setMsg] = useState(null);
@@ -30,14 +29,16 @@ export default function Createroom() {
   const navigate = useNavigate();
   const { roomId } = useParams();
   const socket = useSocket();
-  const date = new Date();
-
+  let storedUser = "";
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem("user"));
-    if (storedUser) {
-      setUser(storedUser);
-      console.log(user)
+    function fetchData() {
+      storedUser = JSON.parse(localStorage.getItem("user"));
+      if (storedUser) {
+        setUser(storedUser)
+      }
     }
+
+    fetchData();
   }, [])
 
   // real time chat system
@@ -56,7 +57,6 @@ export default function Createroom() {
 
   useEffect(() => {
     if (!socket) return;
-
     const handleChatReceive = (message) => {
       if (msg !== null) {
         setMsg((prev) => [...prev, message]);
@@ -72,33 +72,49 @@ export default function Createroom() {
     };
   }, [socket]);
 
+  useEffect(() => {
+    if (socket) {
+      const handleParticipantUpdate = ({ id, name, adminId }) => {
+        setFetchUser((prev) => {
+          const exists = prev.some((user) => user.id === id);
+          if (!exists) {
+            return [...prev, { id, name, adminId }];
+          }
+          return prev;
+        });
+      };
+
+      socket.on("update-participant", handleParticipantUpdate);
+      return (() => {
+        socket.off("update-participant", handleParticipantUpdate);
+      })
+    }
+  }, [socket])
+
   // real time code
   useEffect(() => {
     if (socket) {
-      setTimeout(() => {
-        console.log(user)
-        const userId = user.id;
-        socket.emit("code-room", { roomId, userId });
-      }, 5000);
-
+      const userId = storedUser?.id;
+      const name = storedUser?.name;
+      socket.emit("code-room", { roomId, userId, name });
 
       socket.on("real-time-code-sync", (realTimeCode) => {
         setCode(realTimeCode);
       });
 
-      socket.on("join-request", ({ name, id, requestId }) => {
-        toast.info("Someone wants to enter");
+      socket.on("join-request", ({ name, id, requestId, adminSelfId }) => {
+        toast("Someone wants to enter");
         setAllowUser((prev) => {
-          const alreadyExists = prev.some((u) => u.id === id);
+          const alreadyExists = prev.some((user) => user.id === id);
           if (alreadyExists) return prev;
-          return [...prev, { id, name, requestId }];
+          return [...prev, { id, name, requestId, adminId: adminSelfId }];
         });
       })
 
       return () => {
         socket.off("real-time-code-sync", (realTimeCode) => {
           setCode(realTimeCode);
-        })
+        });
       }
     }
   }, [socket, roomId]);
@@ -141,26 +157,11 @@ export default function Createroom() {
     a.click();
     URL.revokeObjectURL(url);
   }
-  // fetch the total participants
-  const fetchTotalparticipant = async () => {
-    const server_url = import.meta.env.VITE_SERVER_URL;
-    const res = await axios.get(`${server_url}/auth/fetchParticipant?roomId=${roomId}`);
-    return res.status === 201 ? res.data : [];
-  }
-
-  const { data: totalMember } = useQuery({
-    queryKey: ["participants"],
-    queryFn: fetchTotalparticipant,
-    staleTime: 1000
-  })
 
   // handle the participants
-  const handleRemove = async (id, name) => {
-    const server_url = import.meta.env.VITE_SERVER_URL;
-    const res = await axios.put(`${server_url}/auth/deleteParticipant?roomId=${roomId}&id=${id}`);
-    if (res.data.success) {
-      toast(`Admin removed ${name}`);
-    }
+  const handleRemove = async (id) => {
+    const filterUser = fetchUser.filter((user) => user.id !== id);
+    setFetchUser(filterUser)
   }
   // close the meetings
   const handleClose = () => {
@@ -168,11 +169,20 @@ export default function Createroom() {
   }
 
   // handle waiting users
-  const handleUser = (id, requestId, isApproved) => {
-    console.log(requestId)
-    socket.emit("respond-join-request", { requestId, isApproved });
+  const handleUser = (id, requestId, isApproved, name, adminId) => {
+    if (isApproved) {
+      const filterUser = allowUser.filter((user) => user.id === id);
+      const userToAdd = filterUser[0];
+      setFetchUser((prev) => {
+        return [
+          ...prev, userToAdd
+        ]
+      }
+      )
+    }
     const updatedUser = allowUser.filter((user) => user.id !== id);
     setAllowUser(updatedUser);
+    socket.emit("respond-join-request", { requestId, isApproved, id, name, adminId, roomId });
   }
 
   return (
@@ -197,7 +207,7 @@ export default function Createroom() {
                   <VStack key={user?.id} p="4">
                     <Text textAlign="left">{user?.name}</Text>
                     <HStack>
-                      <Button onClick={() => handleUser(user?.id, user?.requestId, true)}>Allow</Button>
+                      <Button onClick={() => handleUser(user?.id, user?.requestId, true, user?.name, user?.adminId)}>Allow</Button>
                       <Button onClick={() => handleUser(user?.id, user?.requestId, false)}>Deny</Button>
                     </HStack>
                   </VStack>
@@ -207,13 +217,13 @@ export default function Createroom() {
             }
             <Input placeholder="Search by the name" />
             <Flex direction="column" gap={2} w="auto" fontWeight="semibold" fontSize="lg" color="gray.400" >
-              {totalMember?.member?.map((member) => {
+              {fetchUser?.map((member) => {
                 return (
-                  <Box key={member._id} p="3" shadow="md" borderWidth="1px" borderRadius="md" mt="3" display="flex" alignItems="center" justifyContent="space-between">
-                    <Text fontWeight="medium" color="white">
-                      @{member.name} {totalMember.adminId === member?._id && '(Host)'}
+                  <Box key={member.id} p="3" shadow="md" borderWidth="1px" borderRadius="md" mt="3" display="flex" alignItems="center" justifyContent="space-between">
+                    <Text fontWeight="medium" color={colorMode === 'light' ? "black" : "white"}>
+                      @{member.name} {member?.adminId === member?.id && '(Host)'}
                     </Text>
-                    {totalMember.adminId !== member?._id &&
+                    {member?.adminId !== member?.id && member?.adminId === user?.id &&
                       <Menu>
                         <MenuButton
                           as={Button}
@@ -222,7 +232,7 @@ export default function Createroom() {
                           rightIcon={<FiMoreVertical />}
                         />
                         <MenuList>
-                          <MenuItem onClick={() => handleRemove(member._id, member.name)}>
+                          <MenuItem onClick={() => handleRemove(member?.id, member?.name)}>
                             Remove
                           </MenuItem>
                         </MenuList>
@@ -338,7 +348,7 @@ export default function Createroom() {
                 lineHeight="20px"
                 zIndex="1"
               >
-                {totalMember?.member?.length}
+                {fetchUser?.length}
               </Box>
               <IconButton
                 icon={<MdPeople size="1.5rem" />}
@@ -374,7 +384,7 @@ export default function Createroom() {
           <DrawerBody>
             {msg !== null && msg?.map((msg) => {
               return (
-                <Flex key={msg.id} mt='4' p="2" justify={msg.id === user.id ? "flex-end" : "flex-start"} position="relative" >
+                <Flex key={Math.random(Number(msg.id))} mt='4' p="2" justify={msg.id === user.id ? "flex-end" : "flex-start"} position="relative" >
                   <Avatar name="Yashraj Singh" size="sm" cursor="pointer" mt="4" mr="2" />
                   <Flex shadow="md" rounded="xl" p="2" direction="column" >
                     <Text color="gray.400">@{msg?.name}</Text>
