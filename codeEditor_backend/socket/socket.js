@@ -3,7 +3,6 @@ import { Server } from "socket.io";
 import http from "http";
 import roomModel from "../models/room.js";
 import dotenv from "dotenv";
-import { connect } from "http2";
 
 dotenv.config();
 
@@ -20,15 +19,20 @@ const io = new Server(server, {
 
 const roomChats = {};
 const adminSocketId = new Map();
+const adminHostId = new Map();
 
 io.on("connection", (socket) => {
-  socket.on("code-room", async ({ roomId, userId }) => {
+  socket.on("code-room", async ({ roomId, userId, name }) => {
     socket.join(roomId);
     const room = await roomModel.findById({ _id: roomId });
-    
-    if (room.adminId.toString() === "686256c0c774740ef46e70d5") {
-      adminSocketId.set(roomId, socket.id)
+    if (room.adminId.toString() === userId) {
+      adminHostId.set(roomId, userId)
+      if (adminSocketId.get(roomId) === undefined) {
+        adminSocketId.set(roomId, socket.id)
+      }
     }
+    const adminId = room.adminId.toString();
+    io.to(roomId).emit("update-participant", { userId, name, adminId });
   })
 
   socket.on('real-time-code-sent', async ({ code, roomId }) => {
@@ -48,15 +52,18 @@ io.on("connection", (socket) => {
   });
 
   socket.on('request-join-room', ({ roomId, name, id }) => {
-    
+
     const adminId = adminSocketId.get(roomId);
+    const adminSelfId = adminHostId.get(roomId);
     const requestId = socket.id;
-    io.to(adminId).emit('join-request', { name, id, requestId });
+
+    io.to(adminId).emit('join-request', { name, id, requestId, adminSelfId });
   })
 
-  socket.on("respond-join-request", ({ requestId, isApproved }) => {
+  socket.on("respond-join-request", ({ requestId, isApproved, id, name, adminId, roomId }) => {
     if (isApproved === true) {
       io.to(requestId).emit("join-approved");
+      io.to(roomId).emit("update-participant", { id, name, adminId });
     } else {
       io.to(requestId).emit("join-denied", { reason: "Rejected by admin" });
     }
