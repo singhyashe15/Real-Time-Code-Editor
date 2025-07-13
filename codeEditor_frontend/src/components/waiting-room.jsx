@@ -42,7 +42,7 @@ export default function WaitingRoom() {
           <Spinner size="xl" color="red.500" borderWidth="4px" />
         </Heading>
         <Text fontSize="lg" color="green.600" fontWeight="semibold" mb={6}>
-          Waiting Until admin let's you in..
+          Wait Until admin let's you in..
         </Text>
       </Card>
     </Flex>
