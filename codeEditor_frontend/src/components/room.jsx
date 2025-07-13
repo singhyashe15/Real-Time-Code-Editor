@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Flex, Box, Text, Button, HStack, IconButton, Tooltip, Select, useColorMode, useColorModeValue, Drawer, DrawerBody, DrawerCloseButton, DrawerContent, DrawerFooter, DrawerHeader, DrawerOverlay, useDisclosure, MenuList, MenuItem, Menu, MenuButton, Input, Avatar, InputGroup, InputRightElement, Center, useEditable, Card, VStack, filter } from "@chakra-ui/react";
+import { Flex, Box, Text, Button, HStack, IconButton, Tooltip, Select, useColorMode, useColorModeValue, Drawer, DrawerBody, DrawerCloseButton, DrawerContent, DrawerFooter, DrawerHeader, DrawerOverlay, useDisclosure, MenuList, MenuItem, Menu, MenuButton, Input, Avatar, InputGroup, InputRightElement, Center, Card, VStack, Icon } from "@chakra-ui/react";
 import { useNavigate, useParams } from "react-router-dom";
 import { MoonIcon, SunIcon } from "@chakra-ui/icons";
 import { FiMoreVertical } from "react-icons/fi";
 import { MdCallEnd, MdChat, MdPeople } from "react-icons/md";
-import { FaPaperPlane } from "react-icons/fa"
-import { Download, Info, SquareMenu } from 'lucide-react';
+import { Download, Info, SquareMenu, Copy, Send } from 'lucide-react';
 import Editor from "@monaco-editor/react";
 import { Java, Cpp, C } from "../boilerplate/boiler.jsx";
 import toast from 'react-hot-toast';
@@ -30,6 +29,7 @@ export default function Createroom() {
   const { roomId } = useParams();
   const socket = useSocket();
   let storedUser = "";
+
   useEffect(() => {
     function fetchData() {
       storedUser = JSON.parse(localStorage.getItem("user"));
@@ -74,7 +74,13 @@ export default function Createroom() {
 
   useEffect(() => {
     if (socket) {
-      const handleParticipantUpdate = ({ id, name, adminId }) => {
+      // Handle full list sent to the joining user
+      socket.on("initial-participants", (participantList) => {
+        setFetchUser(participantList);
+      });
+
+      // Handle updates from other joining users
+      socket.on("update-participant", ({ id, name, adminId }) => {
         setFetchUser((prev) => {
           const exists = prev.some((user) => user.id === id);
           if (!exists) {
@@ -82,12 +88,12 @@ export default function Createroom() {
           }
           return prev;
         });
-      };
+      });
 
-      socket.on("update-participant", handleParticipantUpdate);
-      return (() => {
-        socket.off("update-participant", handleParticipantUpdate);
-      })
+      return () => {
+        socket.off("initial-participants");
+        socket.off("update-participant");
+      };
     }
   }, [socket])
 
@@ -122,21 +128,21 @@ export default function Createroom() {
   useEffect(() => {
     if (socket && code) {
       const timeout = setTimeout(() => {
+        console.log(code)
         socket.emit("real-time-code-sent", { code, roomId });
-      }, 1000);
+      }, 2000);
 
       return () => clearTimeout(timeout);
     }
   }, [code]);
 
-  const handleLanguage = (e) => {
-    const { value } = e.target;
-    setLanguage(value);
-    if (value === 'cpp') {
+  const handleLanguage = (lang) => {
+    setLanguage(lang);
+    if (lang === 'cpp') {
       setCode(Cpp);
-    } else if (value === 'java') {
+    } else if (lang === 'java') {
       setCode(Java);
-    } else if (value === 'c') {
+    } else if (lang === 'c') {
       setCode(C)
     }
   }
@@ -158,20 +164,18 @@ export default function Createroom() {
     URL.revokeObjectURL(url);
   }
 
-  // handle the participants
-  const handleRemove = async (id) => {
-    const filterUser = fetchUser.filter((user) => user.id !== id);
-    setFetchUser(filterUser)
-  }
   // close the meetings
-  const handleClose = () => {
+  const handleClose = (id) => {
+    const updatedUser = fetchUser.filter((user) => user.id !== id);
+    setFetchUser(updatedUser);
+
     navigate("/", { replace: true });
   }
 
   // handle waiting users
-  const handleUser = (id, requestId, isApproved, name, adminId) => {
+  const handleUser = (userId, requestId, isApproved, name, adminId) => {
     if (isApproved) {
-      const filterUser = allowUser.filter((user) => user.id === id);
+      const filterUser = allowUser.filter((user) => user.id === userId);
       const userToAdd = filterUser[0];
       setFetchUser((prev) => {
         return [
@@ -180,9 +184,18 @@ export default function Createroom() {
       }
       )
     }
-    const updatedUser = allowUser.filter((user) => user.id !== id);
+    const updatedUser = allowUser.filter((user) => user.id !== userId);
     setAllowUser(updatedUser);
-    socket.emit("respond-join-request", { requestId, isApproved, id, name, adminId, roomId });
+    socket.emit("respond-join-request", { requestId, isApproved, userId, name, adminId, roomId });
+  }
+
+  const handleCopy = async (roomId) => {
+    try {
+      await navigator.clipboard.writeText(roomId);
+      toast('RoomId copied');
+    } catch (err) {
+      toast('Failed to copy roomID: ', err);
+    }
   }
 
   return (
@@ -215,7 +228,6 @@ export default function Createroom() {
                 )
               })
             }
-            <Input placeholder="Search by the name" />
             <Flex direction="column" gap={2} w="auto" fontWeight="semibold" fontSize="lg" color="gray.400" >
               {fetchUser?.map((member) => {
                 return (
@@ -223,22 +235,7 @@ export default function Createroom() {
                     <Text fontWeight="medium" color={colorMode === 'light' ? "black" : "white"}>
                       @{member.name} {member?.adminId === member?.id && '(Host)'}
                     </Text>
-                    {member?.adminId !== member?.id && member?.adminId === user?.id &&
-                      <Menu>
-                        <MenuButton
-                          as={Button}
-                          size="sm"
-                          variant="ghost"
-                          rightIcon={<FiMoreVertical />}
-                        />
-                        <MenuList>
-                          <MenuItem onClick={() => handleRemove(member?.id, member?.name)}>
-                            Remove
-                          </MenuItem>
-                        </MenuList>
-                      </Menu>}
                   </Box>
-
                 )
               })
               }
@@ -263,12 +260,6 @@ export default function Createroom() {
           </Text>
 
           <HStack spacing={4}>
-            <Select placeholder="Select language" size="sm" bg={useColorModeValue("gray.200", "gray.700")} onChange={(e) => handleLanguage(e)}>
-              <option value="c">C</option>
-              <option value="cpp">C++</option>
-              <option value="java">Java</option>
-            </Select>
-
             <Tooltip label="Download Code" hasArrow>
               <IconButton
                 aria-label="Download Code"
@@ -288,37 +279,50 @@ export default function Createroom() {
           </HStack>
         </Flex>
 
-        <Box flex="1" p={2} overflow="auto">
-          <Box
+        <Box flex="1" p={2} height="90%" overflow="hidden" bg={useColorModeValue("gray.50", "gray.700")} color={useColorModeValue("black", "white")} >
+          {/* <Box
             borderRadius="sm"
             height="90%"
             bg={useColorModeValue("gray.50", "gray.700")}
             p={4}
             color={useColorModeValue("black", "white")}
-          >
-            <Editor
-              height="80vh"
-              language={language}
-              value={code}
-              onChange={handleEditorChange}
-            />
-          </Box>
+          > */}
+          <Editor
+            height="80vh"
+            language={language}
+            value={code}
+            onChange={handleEditorChange}
+          />
+          {/* </Box> */}
           {
             show &&
-            <Card mt="-10" p="4" w="auto" h="24" rounded="lg" float="right" zIndex="999" bgColor="yellow.900" >
-              <Text color={colorMode === "light" ? "black" : "white"} >
-                Meeting ID : {roomId}
-              </Text>
+            <Card mt="-32" p="4" w="auto" h="24" rounded="lg" float="right" zIndex="999" bgColor="yellow.900" >
+              <HStack spacing="4" p="2">
+                <Text color={colorMode === "light" ? "black" : "white"}  >
+                  Meeting ID : {roomId}
+                </Text>
+                <Icon as={Copy} cursor="pointer" onClick={() => handleCopy(roomId)} />
+              </HStack>
+              <Text p="2">Share this roomId</Text>
             </Card>
           }
         </Box>
         <Flex justify="space-between" m="8">
           <HStack>
-            <IconButton
-              icon={<SquareMenu size="1.5rem" />}
-              variant="ghost"
-              aria-label="Menu"
-            />
+            <Menu>
+              <MenuButton
+                as={IconButton}
+                icon={<SquareMenu size="1.5rem" />}
+                variant="ghost"
+                aria-label="Language Menu"
+              />
+              <MenuList p="2">
+                <MenuItem onClick={() => handleLanguage('c')}>C</MenuItem>
+                <MenuItem onClick={() => handleLanguage('cpp')}>C++</MenuItem>
+                <MenuItem onClick={() => handleLanguage('java')}>Java</MenuItem>
+              </MenuList>
+            </Menu>
+
           </HStack>
           <HStack spacing="8">
             <IconButton
@@ -328,10 +332,11 @@ export default function Createroom() {
               onClick={onChatsOpen} ref={chatsBtnRef}
             />
             <IconButton
-              icon={<MdCallEnd color="red" size="1.5rem" />}
+              icon={<MdCallEnd color="white" size="1.5rem" />}
               variant="ghost"
+              bg="red"
               aria-label="End the meetings"
-              onClick={() => handleClose()}
+              onClick={() => handleClose(user?.id)}
             />
             <Box position="relative" display="inline-block">
               <Box
@@ -406,7 +411,7 @@ export default function Createroom() {
           <DrawerFooter>
             <InputGroup>
               <InputRightElement cursor="pointer" onClick={() => handleSend()}>
-                <FaPaperPlane />
+                <Send />
               </InputRightElement>
               <Input placeholder='Type here...' name="comment" value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" />
             </InputGroup>

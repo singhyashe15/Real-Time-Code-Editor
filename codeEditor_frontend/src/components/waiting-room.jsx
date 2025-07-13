@@ -3,6 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { FaCode } from "react-icons/fa";
 import { useEffect } from "react";
 import { useSocket } from "../context/socket.jsx";
+import toast from "react-hot-toast";
+
 export default function WaitingRoom() {
   const navigate = useNavigate();
   const socket = useSocket();
@@ -21,8 +23,8 @@ export default function WaitingRoom() {
       });
 
       socket.on("join-denied", ({ reason }) => {
-        alert(reason || "Access denied");
-        navigate('/login', { replace: true });
+        toast.error(reason || "Access denied");
+        navigate('/', { replace: true });
       });
 
       return () => {
