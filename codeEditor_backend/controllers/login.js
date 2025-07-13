@@ -7,7 +7,7 @@ const Login = async (req, res) => {
     const user_details = req.body;
    
     const isFound = await userModel.findOne({ email: user_details.email });
-    console.log(isFound)
+
     if (isFound) {
       const hashedPassword = isFound.password;
       const isMatch = bcrypt.compare(user_details.password, hashedPassword);

@@ -22,7 +22,7 @@ const adminSocketId = new Map();
 const adminHostId = new Map();
 
 io.on("connection", (socket) => {
-  socket.on("code-room", async ({ roomId, userId, name }) => {
+  socket.on("code-room", async ({ roomId, userId }) => {
     socket.join(roomId);
     const room = await roomModel.findById({ _id: roomId });
     if (room.adminId.toString() === userId) {
@@ -31,8 +31,23 @@ io.on("connection", (socket) => {
         adminSocketId.set(roomId, socket.id)
       }
     }
-    const adminId = room.adminId.toString();
-    io.to(roomId).emit("update-participant", { userId, name, adminId });
+    // const adminId = room.adminId.toString();
+    const participants = await roomModel.findById(roomId).populate('usersId', 'name'); // or however you fetch
+
+    // Get full list of participants (this could come from DB or memory)
+    const currentParticipants = participants.usersId.map(user => ({
+      id: user._id.toString(),
+      name: user.name,
+      adminId: participants.adminId.toString()
+    }));
+
+    // Send full participant list to just the joining user
+    io.to(socket.id).emit("initial-participants", currentParticipants);
+
+    // Broadcast this new user to others
+    const joinedUser = currentParticipants.find(u => u.id === userId);
+    socket.to(roomId).emit("update-participant", joinedUser);
+
   })
 
   socket.on('real-time-code-sent', async ({ code, roomId }) => {
@@ -52,18 +67,15 @@ io.on("connection", (socket) => {
   });
 
   socket.on('request-join-room', ({ roomId, name, id }) => {
-
     const adminId = adminSocketId.get(roomId);
     const adminSelfId = adminHostId.get(roomId);
     const requestId = socket.id;
-
     io.to(adminId).emit('join-request', { name, id, requestId, adminSelfId });
   })
 
-  socket.on("respond-join-request", ({ requestId, isApproved, id, name, adminId, roomId }) => {
+  socket.on("respond-join-request", ({ requestId, isApproved, userId, name, adminId, roomId }) => {
     if (isApproved === true) {
       io.to(requestId).emit("join-approved");
-      io.to(roomId).emit("update-participant", { id, name, adminId });
     } else {
       io.to(requestId).emit("join-denied", { reason: "Rejected by admin" });
     }
